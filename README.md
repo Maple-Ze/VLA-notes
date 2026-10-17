@@ -1,8 +1,6 @@
 # VLA 与机器人学习：知识问题整合手册
 
-> **版本：** 2026-10-17  
-> **范围：** 整合两批问题中的知识类主题，合并重复项，并补足关键原理。  
-> **说明：** 本手册不代写个人项目经历、实测成功率、特定机械臂配置、现场故障处理记录或个人数据采集数量；这些内容必须以真实记录为依据。  
+> **版本：** 2026-10-17   
 > **配图：** 技术插图使用 ImageGen 生成，作为概念辅助图；公式、模型细节和代码事实以论文及官方仓库为准。图片中的文字或公式可能存在生成误差，不应作为事实来源。
 
 ## 目录
@@ -121,7 +119,6 @@ PaliGemma 不只是纯文本 Gemma：它包含视觉编码路径与语言模型�
 可将一次控制周期的时间分解为：
 
 $$
-
 T_{\mathrm{e2e}} =
 T_{\mathrm{capture}}+
 T_{\mathrm{pre}}+
@@ -130,9 +127,7 @@ T_{\mathrm{post}}+
 T_{\mathrm{transport}}+
 T_{\mathrm{controller}}+
 T_{\mathrm{response}}
-
 $$
-
 其中各项分别对应相机采集与同步、预处理、模型推理、动作后处理、通信、控制器接收以及实际执行响应。是否把最后的物理响应纳入指标，取决于论文声称的边界，但必须在报告中明确。
 
 时间戳最好使用单调时钟；若观测、推理和控制分布在不同设备上，要处理时钟同步误差。应记录原始时间戳，不要只依靠程序日志中相邻两行的时间差。
@@ -172,13 +167,10 @@ $$
 若系统状态 $s_t$ 包含预测未来所需的全部信息，则满足马尔可夫性质：
 
 $$
-
 p(s_{t+1}\mid s_t,a_t,s_{t-1},a_{t-1},\ldots)
 =
 p(s_{t+1}\mid s_t,a_t)
-
 $$
-
 直观上，给定当前完整状态和当前动作后，更早的历史不再提供额外的下一状态预测信息。
 
 ### 3.2 机器人什么时候看起来不满足马尔可夫性质？
@@ -234,19 +226,13 @@ Flow Matching 训练的是**向量场**，不是简单地直接回归最终动�
 令真实动作片段为 $A_{\mathrm{data}}$，噪声为：
 
 $$
-
 \epsilon\sim\mathcal{N}(0,I)
-
 $$
-
 为了推导清楚，先约定 $t=0$ 对应噪声、$t=1$ 对应真实动作。构造线性插值：
 
 $$
-
 A_t=(1-t)\epsilon+tA_{\mathrm{data}},\quad t\sim\mathcal{U}(0,1)
-
 $$
-
 当 $t=0$ 时，$A_t=\epsilon$；当 $t=1$ 时，$A_t=A_{\mathrm{data}}$。
 
 ### 4.3 Step 2：推导目标速度
@@ -254,19 +240,13 @@ $$
 对插值式关于 $t$ 求导：
 
 $$
-
 \frac{dA_t}{dt}=A_{\mathrm{data}}-\epsilon
-
 $$
-
 所以这条条件路径上的目标速度是：
 
 $$
-
 u_t=A_{\mathrm{data}}-\epsilon
-
 $$
-
 这一步很关键：模型并不是预测“当前动作值是多少”，而是预测“沿着生成路径，当前样本应该朝哪个方向、以多大速度变化”。
 
 ### 4.4 Step 3：训练向量场网络
@@ -274,15 +254,12 @@ $$
 令模型为 $v_\theta(A_t,t,c)$，其中 $c$ 表示图像、语言和机器人状态等条件。训练目标为：
 
 $$
-
 \mathcal{L}_{\mathrm{FM}}(\theta)=
 \mathbb{E}_{A_{\mathrm{data}},\epsilon,t,c}
 \left[
 \left\|v_\theta(A_t,t,c)-(A_{\mathrm{data}}-\epsilon)\right\|_2^2
 \right]
-
 $$
-
 每个训练样本只需采样噪声、采样时间 $t$、构造插值样本 $A_t$，再计算预测速度与目标速度的差。**训练 loss 不要求先完整积分生成轨迹。** 这就是 Flow Matching 训练形式的一个重要优势。
 
 ### 4.5 Step 4：推理时积分生成动作
@@ -290,19 +267,13 @@ $$
 训练结束后，给定新的条件 $c$，从噪声开始：
 
 $$
-
 A(0)\sim\mathcal{N}(0,I)
-
 $$
-
 然后求解常微分方程：
 
 $$
-
 \frac{dA(t)}{dt}=v_\theta(A(t),t,c),\quad t\in[0,1]
-
 $$
-
 从 $t=0$ 积分到 $t=1$，得到动作片段 $A(1)$。实际推理通常用有限步的 Euler 或其他 ODE 数值积分器近似求解。
 
 ### 4.6 为什么论文和代码中的符号有时相反？
@@ -310,12 +281,9 @@ $$
 不同实现可以采用相反的时间约定。例如 OpenPI 的实现路径常用“$t=0$ 为动作、$t=1$ 为噪声”的写法：
 
 $$
-
 A_t=(1-t)A_{\mathrm{data}}+t\epsilon,\qquad
 u_t=\epsilon-A_{\mathrm{data}}
-
 $$
-
 采样时再从 $t=1$ 向 $t=0$ 积分。它与上面的推导只是时间方向不同，思想相同。**读 Flow Matching 公式时必须先看清楚：哪个端点是噪声、哪个端点是真实数据、积分方向是什么。**
 
 ### 4.7 在 VLA 中还要注意什么？
@@ -349,7 +317,6 @@ Flow Matching 更像是**动作生成的建模目标**；PPO 是**强化学习�
 PPO 常见的 clipped surrogate objective 为：
 
 $$
-
 L^{\mathrm{CLIP}}(\theta)=
 \mathbb{E}_t\left[
 \min\left(
@@ -357,19 +324,14 @@ r_t(\theta)\hat A_t,\,
 \operatorname{clip}(r_t(\theta),1-\epsilon,1+\epsilon)\hat A_t
 \right)
 \right]
-
 $$
-
 其中：
 
 $$
-
 r_t(\theta)=
 \frac{\pi_\theta(a_t\mid s_t)}
 {\pi_{\theta_{\mathrm{old}}}(a_t\mid s_t)}
-
 $$
-
 - $\pi_\theta$ 是当前策略，$\pi_{\theta_{\mathrm{old}}}$ 是采集 rollout 时的旧策略；
 - $\hat A_t$ 是优势估计，反映动作相对基线的好坏；
 - $\epsilon$ 控制概率比值允许变化的范围，减少单次更新过大带来的不稳定。
@@ -390,7 +352,6 @@ PPO 通常通过“采集环境交互数据 → 计算回报和优势 → 多轮
 DPO 常用的数据形式是 $(x,y^+,y^-)$：给定同一个条件 $x$，人类或评价规则偏好 $y^+$ 而不是 $y^-$。其常见损失可以写成：
 
 $$
-
 \mathcal{L}_{\mathrm{DPO}}(\theta)=
 -\mathbb{E}
 \left[
@@ -402,9 +363,7 @@ $$
 \right]
 \right)
 \right]
-
 $$
-
 - $\pi_\theta$ 是正在优化的策略；
 - $\pi_{\mathrm{ref}}$ 是参考策略；
 - $y^+$ 和 $y^-$ 是优选与较差的候选；
@@ -457,11 +416,8 @@ Diffusion/Flow Matching 等生成式方法试图学习多模态动作分布，�
 若某个动作维度的取值区间为 $[a_{\min},a_{\max}]$，均匀量化成 $N$ 个 bin，则 bin 宽度约为：
 
 $$
-
 \Delta=\frac{a_{\max}-a_{\min}}{N}
-
 $$
-
 若使用 bin 中心作为重建值，理想均匀量化下单维最大量化误差约为 $\Delta/2$。实际误差还会受分布、裁剪范围、维度归一化和模型预测错误影响。
 
 OpenVLA 的经典动作 token 设置使用每维 256-bin 量化，但不能据此推断所有离散 VLA 都使用同样的方案。
@@ -484,28 +440,19 @@ OpenVLA 的经典动作 token 设置使用每维 256-bin 量化，但不能据�
 假设机械臂未来 $H=50$ 步动作，每步有 7 个连续量：
 
 $$
-
 A\in\mathbb{R}^{B\times H\times 7}
-
 $$
-
 先将每步动作投影到 Transformer 隐藏空间：
 
 $$
-
 E_A=\operatorname{MLP}(A),\quad
 E_A\in\mathbb{R}^{B\times H\times d_{\mathrm{model}}}
-
 $$
-
 再为每个时间步添加位置编码：
 
 $$
-
 Z=E_A+P,\quad P\in\mathbb{R}^{1\times H\times d_{\mathrm{model}}}
-
 $$
-
 这里的 $P$ 告诉模型“这是轨迹的第几步”；原始动作值本身才描述位置、角度、夹爪等物理量。位置编码不能代替几何状态，也不能修复坐标系或单位错误。
 
 ### 7.2 常见时间位置编码
@@ -546,19 +493,13 @@ $$
 给定 Transformer 输入：
 
 $$
-
 X\in\mathbb{R}^{B\times L\times D}
-
 $$
-
 其中 $B$ 为 batch size，$L$ 为 token 数，$D$ 为隐藏维度。通过线性层得到：
 
 $$
-
 Q=XW_Q,\qquad K=XW_K,\qquad V=XW_V
-
 $$
-
 直观理解：
 
 - **Query（Q）：** 当前 token 想从上下文中寻找什么信息；
@@ -583,12 +524,9 @@ Q/K/V 都是从模型输入投影得到的特征，不是三种独立的传感�
 核心公式：
 
 $$
-
 \operatorname{Attention}(Q,K,V)=
 \operatorname{softmax}\left(\frac{QK^\top}{\sqrt{d_k}}+M\right)V
-
 $$
-
 $M$ 是 mask，可以屏蔽 padding，也可以在自回归生成中屏蔽未来 token。
 
 **Cross-Attention：** 若 Query 来自长度 $L_q$ 的 decoder，Key/Value 来自长度 $L_k$ 的 encoder，则注意力分数形状为 $[B,h,L_q,L_k]$。
@@ -600,29 +538,20 @@ $M$ 是 mask，可以屏蔽 padding，也可以在自回归生成中屏蔽未来
 假设当前缓存为：
 
 $$
-
 K_{\mathrm{cache}},V_{\mathrm{cache}}
 \in\mathbb{R}^{B\times h\times L\times d_k}
-
 $$
-
 新 token 的 K/V 为：
 
 $$
-
 K_{\mathrm{new}},V_{\mathrm{new}}
 \in\mathbb{R}^{B\times h\times 1\times d_k}
-
 $$
-
 沿序列维追加后，缓存形状变为：
 
 $$
-
 [B,h,L+1,d_k]
-
 $$
-
 当前 Query 的形状是 $[B,h,1,d_k]$，所以它与全部缓存 Key 计算得到的分数形状是 $[B,h,1,L+1]$。
 
 ### 8.4 KV Cache 在 π₀ / π₀.₅ 中怎么理解？
@@ -739,11 +668,8 @@ GO-1 与 LAPA 有关联，但不是同一个算法：LAPA 重点是从无动作�
 对一个线性层权重 $W$，LoRA 将参数更新写成低秩分解：
 
 $$
-
 W'=W+\Delta W,\qquad \Delta W=BA
-
 $$
-
 其中 $A$、$B$ 是可训练的低秩矩阵，秩 $r$ 通常远小于 $W$ 的隐藏维度。原始权重 $W$ 大多冻结，只训练 $A$ 和 $B$，从而减少需要更新的参数量以及优化器状态开销。
 
 ### 11.2 VLA 中常见的插入位置
